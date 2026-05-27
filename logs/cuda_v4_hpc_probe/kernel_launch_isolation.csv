@@ -1,0 +1,13 @@
+model,threshold,encode_kernel_ms,decode_kernel_ms,kernel_launch_count,decode_kernel_launch_count,encode_ms_per_launch,decode_ms_per_launch,generic_launch_event_ms,event_method
+resnet18,2048,0.964610,0.197038,40,20,0.024115,0.009852,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet18,4096,0.951536,0.195573,40,20,0.023788,0.009779,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet18,8192,0.932216,0.192062,38,19,0.024532,0.010109,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet18,16384,0.910913,0.190580,36,18,0.025303,0.010588,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet18,65536,0.774238,0.175505,26,13,0.029778,0.013500,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet18,262144,0.614599,0.155631,16,8,0.038412,0.019454,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,2048,2.693458,0.466119,138,69,0.019518,0.006755,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,4096,2.217230,0.423496,106,53,0.020917,0.007990,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,8192,2.217596,0.417276,104,52,0.021323,0.008025,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,16384,2.217654,0.420335,104,52,0.021324,0.008083,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,65536,1.912353,0.380897,82,41,0.023321,0.009290,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes
+resnet50,262144,1.542091,0.324423,56,28,0.027537,0.011587,0.027828224,generic_torch_event; extension does not expose per-kernel CUDA events without code changes

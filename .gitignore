@@ -1,0 +1,47 @@
+# Large replay data
+dataset/
+!dataset/
+dataset/*
+!dataset/*.md
+*.bin
+
+# Build products and compiled binaries
+build/
+bin/
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+cuda_feasibility/falcom_cuda_microbench
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local environments and installer output
+.venv/
+venv/
+envs/
+*.log
+pip_bootstrap_falcom_gpu.log
+pip_install_appfl.log
+pip_install_extra.log
+
+# Local outputs
+output/
+
+# Credentials and local secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.sqlite
+*.db
+
+# Generated packaging metadata
+*.egg-info/

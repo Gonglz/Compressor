@@ -1,0 +1,7 @@
+kernel,numel,bytes,cpu_ms,gpu_only_ms,h2d_gpu_d2h_ms,launch_count,iters
+momentum_update,1024,4096,0.000208,0.003123,0.024513,1,20
+residual_predmem_update,1024,4096,0.000625,0.002662,0.024674,1,20
+threshold_scan,1024,4096,0.001101,0.002509,0.016082,1,20
+bitmap_pack,1024,1024,0.003443,0.002507,0.015244,1,20
+dominant_sign_pack,1024,4096,0.003462,0.002918,0.015815,1,20
+decompress_reconstruct,1024,4096,0.000166,0.002560,0.024103,1,20

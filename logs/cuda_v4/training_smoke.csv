@@ -1,0 +1,13 @@
+model,round_index,path,threshold,quant_mode,round_time_ms,compress_ms,decompress_ms,compression_ratio,gradient_norm,relative_l2_error,finite_rate,loss,accuracy,status
+resnet18,0,cpu_safe_grouped,16384,8,706.250948,367.053587,339.197361,3.844513,33.387459,0.005521,1.000000,not_available,not_available,pass
+resnet18,0,cuda_v4_q8,16384,8,42.326145,27.321133,15.005012,3.965820,33.387459,0.011362,1.000000,not_available,not_available,pass
+resnet18,1,cpu_safe_grouped,16384,8,862.958797,427.878519,435.080279,3.815618,33.403946,0.005657,1.000000,not_available,not_available,pass
+resnet18,1,cuda_v4_q8,16384,8,33.286819,18.758387,14.528432,3.965800,33.403946,0.020178,1.000000,not_available,not_available,pass
+resnet18,2,cpu_safe_grouped,16384,8,796.764507,407.544688,389.219819,3.800295,33.403099,0.005537,1.000000,not_available,not_available,pass
+resnet18,2,cuda_v4_q8,16384,8,30.782098,16.978562,13.803536,3.966456,33.403099,0.025881,1.000000,not_available,not_available,pass
+resnet50,0,cpu_safe_grouped,16384,8,1343.685050,682.778618,660.906431,3.839127,48.392017,0.005640,1.000000,not_available,not_available,pass
+resnet50,0,cuda_v4_q8,16384,8,87.171346,52.998434,34.172912,3.938553,48.392017,0.011729,1.000000,not_available,not_available,pass
+resnet50,1,cpu_safe_grouped,16384,8,1952.153498,1099.060376,853.093122,3.756542,48.393234,0.005576,1.000000,not_available,not_available,pass
+resnet50,1,cuda_v4_q8,16384,8,84.310002,43.322286,40.987716,3.938190,48.393234,0.019804,1.000000,not_available,not_available,pass
+resnet50,2,cpu_safe_grouped,16384,8,1777.329737,999.386110,777.943627,3.763677,48.396641,0.005645,1.000000,not_available,not_available,pass
+resnet50,2,cuda_v4_q8,16384,8,81.956062,44.462204,37.493858,3.938172,48.396641,0.025217,1.000000,not_available,not_available,pass

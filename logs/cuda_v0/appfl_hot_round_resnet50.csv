@@ -1,0 +1,4 @@
+model,round_index,round_type,num_layers,original_mb,model_total_ms,gpu_to_cpu_numpy_ms,ctypes_ms,c_compress_ms,payload_copy_ms,compression_ratio
+resnet50,0,round0,266,89.927490,809.868797,39.827914,5.005173,726.390058,7.444032,3.839127
+resnet50,1,hot,266,89.927490,1150.225669,42.431161,4.952351,1051.777129,9.859746,3.756542
+resnet50,2,hot,266,89.927490,1154.665230,40.450680,4.737037,1079.990553,8.483344,3.763677
