@@ -60,14 +60,14 @@ gcc $CFLAGS $EXTRA_FLAGS \
 
 if [ $? -eq 0 ]; then
     echo "✅ Build successful: $OUTPUT_LIB"
-    
+
     # Copy to APPFL compressor directory
     APPFL_DIR="/home/exouser/compressor/final/EB-FaLCom/src/appfl/compressor"
     if [ -d "$APPFL_DIR" ]; then
         cp "$OUTPUT_LIB" "$APPFL_DIR/"
         echo "✅ Copied library to: $APPFL_DIR"
     fi
-    
+
     # Show library info
     echo ""
     echo "📊 Library info:"

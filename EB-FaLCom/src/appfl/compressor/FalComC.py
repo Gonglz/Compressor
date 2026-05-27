@@ -120,7 +120,7 @@ DTYPE_MAP_REVERSE = {v: k for k, v in DTYPE_MAP.items()}
 class FalComC(BaseCompressor):
     """
     C-accelerated FalCom compressor.
-    
+
     This is a drop-in replacement for FalCom.py that uses compiled C code
     for performance-critical operations while maintaining full API compatibility.
     """
@@ -134,7 +134,7 @@ class FalComC(BaseCompressor):
         if not self.logger.handlers:
             output_dir = "./output"
             os.makedirs(output_dir, exist_ok=True)
-            
+
             file_handler = logging.FileHandler(os.path.join(output_dir, "falcom_c.log"), mode="a")
             formatter = logging.Formatter('[%(asctime)s] %(name)s - %(levelname)s - %(message)s')
             file_handler.setFormatter(formatter)
@@ -147,10 +147,10 @@ class FalComC(BaseCompressor):
 
         # Load C library
         self._load_c_library()
-        
+
         # Initialize C compressor
         self._init_c_compressor()
-        
+
         self.logger.info(f"✅ FalComC initialized with C backend")
 
     def _load_c_library(self):
@@ -163,7 +163,7 @@ class FalComC(BaseCompressor):
             os.path.join("/home/exouser/compressor/final", lib_name),
             os.path.join(os.getcwd(), lib_name),
         ]
-        
+
         self.lib = None
         for path in possible_paths:
             if os.path.exists(path):
@@ -173,10 +173,10 @@ class FalComC(BaseCompressor):
                     break
                 except Exception as e:
                     self.logger.warning(f"Failed to load {path}: {e}")
-        
+
         if self.lib is None:
             raise RuntimeError(f"Could not load {lib_name}. Tried paths: {possible_paths}")
-        
+
         # Define function signatures
         self._setup_function_signatures()
 
@@ -185,15 +185,15 @@ class FalComC(BaseCompressor):
         # momentum_compressor_create
         self.lib.momentum_compressor_create.argtypes = [ctypes.POINTER(CompressorConfigC)]
         self.lib.momentum_compressor_create.restype = ctypes.c_void_p
-        
+
         # momentum_compressor_destroy
         self.lib.momentum_compressor_destroy.argtypes = [ctypes.c_void_p]
         self.lib.momentum_compressor_destroy.restype = None
-        
+
         # momentum_compressor_set_client
         self.lib.momentum_compressor_set_client.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         self.lib.momentum_compressor_set_client.restype = None
-        
+
         # momentum_compressor_compress_layer
         self.lib.momentum_compressor_compress_layer.argtypes = [
             ctypes.c_void_p,  # compressor
@@ -201,7 +201,7 @@ class FalComC(BaseCompressor):
             ctypes.POINTER(NDArrayC),  # array
         ]
         self.lib.momentum_compressor_compress_layer.restype = ctypes.POINTER(CompressedLayerDataC)
-        
+
         # momentum_compressor_decompress_layer
         self.lib.momentum_compressor_decompress_layer.argtypes = [
             ctypes.c_void_p,  # compressor
@@ -224,11 +224,11 @@ class FalComC(BaseCompressor):
         self.consistency_threshold = getattr(self.config, 'consistency_threshold', 0.5)
         self.param_cutoff = getattr(self.config, 'param_cutoff', 1024)
         self.lossless_compressor = getattr(self.config, 'lossless_compressor', 'blosc')
-        
+
         sz_config = self.config.get("sz_config", {})
         self.error_bounding_mode = sz_config.get("error_bounding_mode", "REL")
         self.error_bound = float(sz_config.get("error_bound", 1e-3))
-        
+
         # Find SZ3 library
         ext = ".dylib" if sys.platform.startswith("darwin") else ".so"
         possible_sz3_paths = [
@@ -240,7 +240,7 @@ class FalComC(BaseCompressor):
             if os.path.exists(path):
                 sz3_lib_path = path
                 break
-        
+
         # Create C config - order must match C struct exactly
         c_config = CompressorConfigC()
         c_config.momentum_lr = self.momentum_lr
@@ -251,58 +251,58 @@ class FalComC(BaseCompressor):
         c_config.sz3_lib_path = sz3_lib_path.encode('utf-8')
         c_config.param_count_threshold = self.param_cutoff
         c_config.max_history_length = 3
-        
+
         # Create C compressor instance
         self.c_compressor = self.lib.momentum_compressor_create(ctypes.byref(c_config))
         if not self.c_compressor:
             raise RuntimeError("Failed to create C compressor instance")
-        
+
         # Current client ID
         self._current_client_id = None
 
     def _numpy_to_c_array(self, arr: np.ndarray) -> NDArrayC:
         """Convert numpy array to C NDArray structure"""
         c_array = NDArrayC()
-        
+
         # Get dtype code
         if arr.dtype not in DTYPE_MAP:
             raise ValueError(f"Unsupported dtype: {arr.dtype}")
-        
+
         # Ensure contiguous
         arr = np.ascontiguousarray(arr)
-        
+
         c_array.dtype = DTYPE_MAP[arr.dtype]
         c_array.ndim = len(arr.shape)
         if c_array.ndim < 1 or c_array.ndim > MAX_NDIM:
             raise ValueError(f"Unsupported ndim: {c_array.ndim}")
         c_array.total_size = arr.size
-        
+
         # Allocate and copy shape
         shape_buffer = (ctypes.c_size_t * c_array.ndim)(*arr.shape)
         c_array.shape = shape_buffer
-        
+
         # Point to numpy data buffer
         c_array.data = arr.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
 
         # Keep Python-owned buffers alive while C reads this struct.
         c_array._shape_buffer = shape_buffer
         c_array._array_ref = arr
-        
+
         return c_array
 
     def _c_array_to_numpy(self, c_array: ctypes.POINTER(NDArrayC)) -> np.ndarray:
         """Convert C NDArray to numpy array"""
         if not c_array:
             return None
-        
+
         arr = c_array.contents
         dtype = DTYPE_MAP_REVERSE[arr.dtype]
         shape = tuple(arr.shape[i] for i in range(arr.ndim))
-        
+
         # Create numpy array from C memory
         buffer = ctypes.cast(arr.data, ctypes.POINTER(ctypes.c_uint8 * (arr.total_size * dtype.itemsize)))
         np_arr = np.frombuffer(buffer.contents, dtype=dtype).reshape(shape)
-        
+
         # Copy to ensure memory safety
         return np_arr.copy()
 
@@ -475,22 +475,22 @@ class FalComC(BaseCompressor):
         self._current_client_id = client_id
         if self.c_compressor:
             self.lib.momentum_compressor_set_client(
-                self.c_compressor, 
+                self.c_compressor,
                 client_id.encode('utf-8')
             )
 
-    def compress_model(self, 
+    def compress_model(self,
                        model: Union[Dict, OrderedDictType[str, np.ndarray], List],
                        batched: bool = False,
                        client_id: Optional[str] = None) -> bytes:
         """
         Compress model using C implementation.
-        
+
         Args:
             model: OrderedDict mapping layer names to numpy arrays
             batched: Whether to handle batched compression
             client_id: Client ID for per-client state management
-            
+
         Returns:
             Compressed bytes
         """
@@ -499,7 +499,7 @@ class FalComC(BaseCompressor):
             self.set_client_id(client_id)
         elif self._current_client_id is None:
             self.set_client_id("Client1")
-        
+
         # Handle batched mode
         if batched:
             if isinstance(model, list):
@@ -509,12 +509,12 @@ class FalComC(BaseCompressor):
                 for k, v in model.items():
                     out[k] = self.compress_model(v)
                 return pickle.dumps(out)
-        
+
         compressed_layers = {}
         profile_enabled = self._appfl_profile_enabled()
         profile_rows: List[Dict[str, Any]] = []
         model_start = time.perf_counter()
-        
+
         for layer_name, array in model.items():
             layer_start = time.perf_counter()
             profile_meta = self._profile_input_metadata(array) if profile_enabled else {}
@@ -532,14 +532,14 @@ class FalComC(BaseCompressor):
                 array = array.detach().cpu().numpy()
                 self._cuda_synchronize_if_needed(tensor_ref)
                 gpu_to_cpu_numpy_ms = (time.perf_counter() - convert_start) * 1000.0
-            
+
             # Try C compression first
             try:
                 # Convert to C array
                 ctypes_start = time.perf_counter()
                 c_array = self._numpy_to_c_array(array)
                 ctypes_build_ms = (time.perf_counter() - ctypes_start) * 1000.0
-                
+
                 # Compress using C
                 c_start = time.perf_counter()
                 compressed_ptr = self.lib.momentum_compressor_compress_layer(
@@ -548,7 +548,7 @@ class FalComC(BaseCompressor):
                     ctypes.byref(c_array)
                 )
                 c_compress_ms = (time.perf_counter() - c_start) * 1000.0
-                
+
                 if compressed_ptr:
                     try:
                         payload_start = time.perf_counter()
@@ -588,7 +588,7 @@ class FalComC(BaseCompressor):
                         "status": status,
                     }
                     profile_rows.append(row)
-        
+
         # Serialize compressed layers
         result = pickle.dumps(compressed_layers)
         if profile_enabled:
@@ -598,20 +598,20 @@ class FalComC(BaseCompressor):
             self._append_profile_rows(profile_rows)
         return result
 
-    def decompress_model(self, 
-                         compressed_data: bytes, 
+    def decompress_model(self,
+                         compressed_data: bytes,
                          model: Any = None,
                          batched: bool = False,
                          client_id: Optional[str] = None) -> Union[OrderedDictType[str, np.ndarray], List]:
         """
         Decompress model using C implementation.
-        
+
         Args:
             compressed_data: Compressed bytes
             model: Optional model template (unused in C version)
             batched: Whether to handle batched decompression
             client_id: Client ID for per-client state management
-            
+
         Returns:
             OrderedDict mapping layer names to numpy arrays
         """
@@ -620,7 +620,7 @@ class FalComC(BaseCompressor):
             self.set_client_id(client_id)
         elif self._current_client_id is None:
             self.set_client_id("Client1")
-        
+
         # Handle batched mode
         if batched:
             data = pickle.loads(compressed_data)
@@ -633,9 +633,9 @@ class FalComC(BaseCompressor):
                 return out
         # Deserialize
         compressed_layers = pickle.loads(compressed_data)
-        
+
         decompressed_model = OrderedDict()
-        
+
         for layer_name, layer_data in compressed_layers.items():
             # Check codec type
             if isinstance(layer_data, dict):
@@ -645,7 +645,7 @@ class FalComC(BaseCompressor):
                 # Legacy bytes lack the C metadata required by the current ABI.
                 codec = 'legacy_c_bytes'
                 compressed_bytes = layer_data
-            
+
             if codec == 'pickle':
                 # Decompress with pickle
                 array = pickle.loads(compressed_bytes)
@@ -662,7 +662,7 @@ class FalComC(BaseCompressor):
                         self._current_client_id.encode('utf-8'),
                         layer_name.encode('utf-8')
                     )
-                    
+
                     if c_array_ptr:
                         try:
                             # Convert to numpy
@@ -675,7 +675,7 @@ class FalComC(BaseCompressor):
                         self.logger.error(f"Failed to decompress layer: {layer_name}")
                 except Exception as e:
                     self.logger.error(f"C decompression failed for {layer_name}: {e}")
-        
+
         return decompressed_model
 
     def __del__(self):

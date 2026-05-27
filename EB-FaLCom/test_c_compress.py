@@ -21,7 +21,7 @@ def load_model_from_capture(filepath):
     """Load model from captured pickle file"""
     with open(filepath, 'rb') as f:
         data = pickle.load(f)
-    
+
     # Reconstruct PyTorch model
     model = {}
     for k, v in data['model'].items():
@@ -29,28 +29,28 @@ def load_model_from_capture(filepath):
             model[k] = torch.from_numpy(v['data'])
         else:
             model[k] = v['data']
-    
+
     return model, data
 
 
 def test_compression(captured_dir, round_num=1):
     """Test C compression on captured training data"""
-    
+
     print("🔬 C Compression Benchmark")
     print("=" * 80)
     print()
-    
+
     # Find compress input files
     pattern = f"round_{round_num}_compress_*_input.pkl"
     files = sorted(Path(captured_dir).glob(pattern))
-    
+
     if not files:
         print(f"❌ No files found matching {pattern}")
         return
-    
+
     print(f"📁 Found {len(files)} test files")
     print()
-    
+
     # Create C compressor
     print("📦 Initializing C compressor...")
     config = {
@@ -62,25 +62,25 @@ def test_compression(captured_dir, round_num=1):
     }
     compressor = FalComC(config)
     print()
-    
+
     # Test each file
     total_original_size = 0
     total_compressed_size = 0
     total_time = 0
     results = []
-    
+
     for i, filepath in enumerate(files):
         print(f"{'=' * 80}")
         print(f"Test {i+1}/{len(files)}: {filepath.name}")
         print(f"{'=' * 80}")
-        
+
         # Load model
         model, metadata = load_model_from_capture(filepath)
-        
+
         print(f"📊 Model info:")
         print(f"   Layers: {len(model)}")
         print(f"   Client: {metadata.get('client_id', 'N/A')}")
-        
+
         # Calculate original size
         original_size = sum(
             v.numel() * v.element_size() if hasattr(v, 'numel')
@@ -91,7 +91,7 @@ def test_compression(captured_dir, round_num=1):
         original_size_mb = original_size / 1024 / 1024
         print(f"   Size: {original_size_mb:.2f} MB")
         print()
-        
+
         # Benchmark compression
         print("⏱️  Compressing with C implementation...")
         start = time.time()
@@ -100,18 +100,18 @@ def test_compression(captured_dir, round_num=1):
             client_id = f"Client{client_id}"
         compressed = compressor.compress_model(model, client_id=client_id)
         elapsed = time.time() - start
-        
+
         compressed_size = len(compressed)
         compressed_size_mb = compressed_size / 1024 / 1024
         ratio = original_size / compressed_size if compressed_size > 0 else 0
         throughput = original_size_mb / elapsed if elapsed > 0 else 0
-        
+
         print(f"✓ Compressed: {compressed_size_mb:.2f} MB")
         print(f"✓ Ratio: {ratio:.2f}x")
         print(f"✓ Time: {elapsed*1000:.2f} ms")
         print(f"✓ Throughput: {throughput:.2f} MB/s")
         print()
-        
+
         results.append({
             'file': filepath.name,
             'original_mb': original_size_mb,
@@ -120,11 +120,11 @@ def test_compression(captured_dir, round_num=1):
             'time_ms': elapsed * 1000,
             'throughput': throughput
         })
-        
+
         total_original_size += original_size
         total_compressed_size += compressed_size
         total_time += elapsed
-    
+
     # Summary
     print()
     print("=" * 80)
@@ -138,7 +138,7 @@ def test_compression(captured_dir, round_num=1):
     print(f"Average time: {(total_time/len(files))*1000:.2f} ms per test")
     print(f"Overall throughput: {(total_original_size/1024/1024)/total_time:.2f} MB/s")
     print()
-    
+
     # Show individual results
     print("=" * 80)
     print("📈 DETAILED RESULTS")
@@ -149,7 +149,7 @@ def test_compression(captured_dir, round_num=1):
         print(f"{r['file']:<30} {r['original_mb']:<10.2f} {r['compressed_mb']:<10.2f} "
               f"{r['ratio']:<8.2f} {r['time_ms']:<10.2f} {r['throughput']:<10.2f}")
     print()
-    
+
     # Optimization potential
     print("=" * 80)
     print("🎯 OpenMP OPTIMIZATION POTENTIAL")
@@ -174,6 +174,6 @@ if __name__ == "__main__":
                         help='Directory with captured data')
     parser.add_argument('--round', type=int, default=1,
                         help='Round number to test')
-    
+
     args = parser.parse_args()
     test_compression(args.captured_dir, args.round)

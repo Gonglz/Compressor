@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-性能对比测试：解压路径 OpenMP 优化（3轮）
-测试 decompress_momentum_predicted_layer 的性能
+performance comparison test: notepath OpenMP note(3note)
+note decompress_momentum_predicted_layer note
 """
 
 import sys
@@ -13,7 +13,7 @@ import time
 def load_library(lib_path):
     return ctypes.CDLL(lib_path)
 
-# C 结构体定义
+# C note
 class NDArray(ctypes.Structure):
     pass
 
@@ -74,10 +74,10 @@ class CompressorConfig(ctypes.Structure):
     ]
 
 def run_decomp_benchmark(lib_path, lib_name):
-    """运行解压基准测试：3轮"""
+    """noterowsnote: 3note"""
     lib = load_library(lib_path)
-    
-    # 定义函数签名
+
+    # notefunctionnote
     lib.momentum_compressor_create.argtypes = [ctypes.POINTER(CompressorConfig)]
     lib.momentum_compressor_create.restype = ctypes.c_void_p
     lib.momentum_compressor_destroy.argtypes = [ctypes.c_void_p]
@@ -89,8 +89,8 @@ def run_decomp_benchmark(lib_path, lib_name):
     lib.ndarray_create.argtypes = [ctypes.POINTER(ctypes.c_size_t), ctypes.c_size_t, ctypes.c_int]
     lib.ndarray_create.restype = ctypes.POINTER(NDArray)
     lib.ndarray_destroy.argtypes = [ctypes.POINTER(NDArray)]
-    
-    # 创建压缩器
+
+    # create compressor
     config = CompressorConfig()
     config.momentum_lr = 0.07
     config.consistency_threshold = 0.5
@@ -99,17 +99,17 @@ def run_decomp_benchmark(lib_path, lib_name):
     config.error_bound = 1.0
     config.param_count_threshold = 1024
     config.max_history_length = 3
-    
+
     compressor = lib.momentum_compressor_create(ctypes.byref(config))
     if not compressor:
-        print(f"❌ {lib_name}: 创建压缩器失败")
+        print(f"FAIL {lib_name}: create compressorfailed")
         return None
-    
+
     print(f"\n{'='*70}")
-    print(f"📊 {lib_name} 解压性能测试 (3轮)")
+    print(f"metrics {lib_name} note (3note)")
     print(f"{'='*70}")
-    
-    # 大卷积层配置（触发动量预测）
+
+    # noteconfiguration(note)
     test_configs = [
         ("layer2.0.conv2", (128, 128, 3, 3)),   # 147.5K
         ("layer3.0.conv1", (256, 128, 3, 3)),   # 294.9K
@@ -117,40 +117,40 @@ def run_decomp_benchmark(lib_path, lib_name):
         ("layer4.0.conv1", (512, 256, 3, 3)),   # 1.17M
         ("layer4.0.conv2", (512, 512, 3, 3)),   # 2.36M
     ]
-    
+
     round_times = []
-    
+
     for round_num in range(1, 4):
         print(f"\n🔄 Round {round_num}")
         lib.momentum_compressor_set_client(compressor, b"TestClient")
-        
+
         round_start = time.time()
         decomp_time = 0.0
-        
+
         for layer_name, shape in test_configs:
-            # 第1步：创建原始数据并压缩
+            # note1note: notedatanote
             grad_size = int(np.prod(shape))
             grad_data = np.random.randn(grad_size).astype(np.float32) * 0.01
-            
+
             shape_array = (ctypes.c_size_t * len(shape))(*shape)
             ndarray = lib.ndarray_create(shape_array, len(shape), 0)
-            
+
             if not ndarray:
                 continue
-            
+
             ctypes.memmove(ndarray.contents.data, grad_data.ctypes.data_as(ctypes.c_void_p), grad_data.nbytes)
-            
-            # 多轮压缩建立历史
+
+            # note
             for step in range(3):
                 compressed = lib.momentum_compressor_compress_layer(
                     compressor,
                     layer_name.encode('utf-8'),
                     ndarray
                 )
-                
-                # 只在第3轮测试解压
+
+                # note3note
                 if step == 2 and compressed:
-                    # 测试解压性能
+                    # note
                     decomp_start = time.time()
                     decompressed = lib.momentum_compressor_decompress_layer(
                         compressor,
@@ -159,11 +159,11 @@ def run_decomp_benchmark(lib_path, lib_name):
                         layer_name.encode('utf-8')
                     )
                     decomp_time += time.time() - decomp_start
-                    
+
                     if decompressed:
                         lib.ndarray_destroy(decompressed)
-                
-                # 释放压缩数据
+
+                # notedata
                 if compressed:
                     if compressed.contents.data:
                         lib.free(compressed.contents.data)
@@ -172,90 +172,90 @@ def run_decomp_benchmark(lib_path, lib_name):
                     if compressed.contents.dominant_signs:
                         lib.free(compressed.contents.dominant_signs)
                     lib.free(compressed)
-            
+
             lib.ndarray_destroy(ndarray)
-        
+
         round_time = time.time() - round_start
         round_times.append(round_time)
-        
-        print(f"  ✓ Round {round_num} 完成，总耗时: {round_time*1000:.1f} ms (解压: {decomp_time*1000:.1f} ms)")
-    
+
+        print(f"  PASS Round {round_num} note, note: {round_time*1000:.1f} ms (note: {decomp_time*1000:.1f} ms)")
+
     lib.momentum_compressor_destroy(compressor)
-    
+
     if round_times:
         avg_time = np.mean(round_times)
         std_time = np.std(round_times)
-        print(f"\n📈 统计结果:")
-        print(f"  平均总耗时: {avg_time*1000:.1f} ms")
-        print(f"  标准差: {std_time*1000:.1f} ms (±{std_time/avg_time*100:.1f}%)")
-        print(f"  三轮时间: [{round_times[0]*1000:.1f}, {round_times[1]*1000:.1f}, {round_times[2]*1000:.1f}] ms")
+        print(f"\ntrend noteresult:")
+        print(f"  note: {avg_time*1000:.1f} ms")
+        print(f"  note: {std_time*1000:.1f} ms (±{std_time/avg_time*100:.1f}%)")
+        print(f"  note: [{round_times[0]*1000:.1f}, {round_times[1]*1000:.1f}, {round_times[2]*1000:.1f}] ms")
         return {
             'lib': lib_name,
             'avg_time': avg_time,
             'std_time': std_time,
             'times': round_times,
         }
-    
+
     return None
 
 def main():
     print("\n" + "="*70)
-    print("🚀 MomentumCompressor 解压性能对比（3轮）")
+    print("🚀 MomentumCompressor note(3note)")
     print("="*70)
-    print(f"📊 测试对象: ResNet50 中等~大卷积层（5个，触发动量预测）")
-    print(f"🧵 线程数: 8 (OpenMP)")
-    
-    # 设置环境变量
+    print(f"metrics note: ResNet50 note~note(5note, note)")
+    print(f"🧵 thread count: 8 (OpenMP)")
+
+    # note
     os.environ['LD_LIBRARY_PATH'] = "/home/exouser/.appfl/.compressor/SZ3/lib:" + os.environ.get('LD_LIBRARY_PATH', '')
     os.environ['OMP_NUM_THREADS'] = '8'
-    
+
     serial_lib = "/home/exouser/compressor/final/libmomentum_compressor_serial.so"
     omp_lib = "/home/exouser/compressor/final/libmomentum_compressor_omp.so"
-    
+
     results = {}
-    
-    # 运行串行基准
+
+    # noterowsnoterowsnote
     if os.path.exists(serial_lib):
-        result = run_decomp_benchmark(serial_lib, "串行基准 (Serial)")
+        result = run_decomp_benchmark(serial_lib, "noterowsnote (Serial)")
         if result:
             results['serial'] = result
     else:
-        print(f"\n❌ 串行库不存在: {serial_lib}")
-    
-    # 运行OpenMP优化
+        print(f"\nFAIL noterowsnote: {serial_lib}")
+
+    # noterowsOpenMPnote
     if os.path.exists(omp_lib):
-        result = run_decomp_benchmark(omp_lib, "OpenMP优化 (v8)")
+        result = run_decomp_benchmark(omp_lib, "OpenMPnote (v8)")
         if result:
             results['omp'] = result
     else:
-        print(f"\n❌ OpenMP库不存在: {omp_lib}")
-    
-    # 对比结果
+        print(f"\nFAIL OpenMPnote: {omp_lib}")
+
+    # noteresult
     if 'serial' in results and 'omp' in results:
         serial = results['serial']
         omp = results['omp']
-        
+
         speedup = serial['avg_time'] / omp['avg_time']
         improvement = (serial['avg_time'] - omp['avg_time']) / serial['avg_time'] * 100
-        
+
         print(f"\n" + "="*70)
-        print("📊 解压性能对比总结")
+        print("metrics note")
         print("="*70)
-        print(f"\n{'版本':<20} {'平均耗时':<15} {'标准差':<15}")
+        print(f"\n{'note':<20} {'note':<15} {'note':<15}")
         print("-" * 70)
-        print(f"{'串行基准':<20} {serial['avg_time']*1000:>8.1f} ms  {serial['std_time']*1000:>8.1f} ms")
-        print(f"{'OpenMP优化':<20} {omp['avg_time']*1000:>8.1f} ms  {omp['std_time']*1000:>8.1f} ms")
+        print(f"{'noterowsnote':<20} {serial['avg_time']*1000:>8.1f} ms  {serial['std_time']*1000:>8.1f} ms")
+        print(f"{'OpenMPnote':<20} {omp['avg_time']*1000:>8.1f} ms  {omp['std_time']*1000:>8.1f} ms")
         print("-" * 70)
-        print(f"\n🎯 性能提升:")
-        print(f"  时间节省: {(serial['avg_time'] - omp['avg_time'])*1000:.1f} ms")
-        print(f"  加速比: {speedup:.2f}x")
-        print(f"  改进率: {improvement:.1f}%")
-        
+        print(f"\n🎯 note:")
+        print(f"  note: {(serial['avg_time'] - omp['avg_time'])*1000:.1f} ms")
+        print(f"  note: {speedup:.2f}x")
+        print(f"  note: {improvement:.1f}%")
+
         if improvement > 0:
-            print(f"\n✅ 解压路径 OpenMP 优化有效！")
+            print(f"\nPASS notepath OpenMP note!")
         else:
-            print(f"\n⚠️  解压路径性能未改进（可能工作负载较小）")
-        
+            print(f"\n⚠️  notepathnote(note)")
+
         print("\n" + "="*70)
 
 if __name__ == '__main__':

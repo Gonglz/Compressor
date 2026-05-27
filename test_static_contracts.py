@@ -51,7 +51,7 @@ def test_direct_decompression_failures_do_not_return_zero_arrays() -> None:
             ndarray_destroy(result);
             return NULL;
         }'''
-    expected_size_guard = '''if (decompressed_size != expected_size) {
+    expected_size_guard = '''if (decompressed_size!= expected_size) {
             fprintf(stderr, "[ERROR] Size mismatch: got %zu, expected %zu\\n",
                     decompressed_size, expected_size);
             free(decompressed);
@@ -72,8 +72,8 @@ def test_direct_decompression_maps_all_supported_dtypes() -> None:
 
 
 def test_dominant_sign_matches_python_positive_vs_negative_rule() -> None:
-    assert "info.dominant_sign = (positives >= negatives) ? 1 : -1;" in C_FINAL
-    assert "return (positives >= negatives) ? 1 : -1;" in C_BASE
+    assert "info.dominant_sign = (positives >= negatives)? 1: -1;" in C_FINAL
+    assert "return (positives >= negatives)? 1: -1;" in C_BASE
 
 
 def test_openmp_memory_creation_does_not_leak_temporary_ndarrays() -> None:
@@ -111,7 +111,7 @@ def test_default_build_embeds_sz3_runtime_search_path() -> None:
 
 def test_openmp_batch_does_not_expose_unsafe_experimental_parallel_path() -> None:
     assert "MOMENTUM_COMPRESSOR_EXPERIMENTAL_BATCH_PARALLEL" not in C_FINAL
-    assert "NULL  // [FIXME] 需要从compressed中提取prediction_memory" not in C_FINAL
+    assert "NULL  // [FIXME] notecompressednoteprediction_memory" not in C_FINAL
     assert "momentum_compressor_compress_layer_pure" not in C_FINAL
     assert "LayerResult" not in C_FINAL
 
@@ -185,12 +185,12 @@ def test_legacy_and_batch_breakdown_envs_are_distinct() -> None:
     body = _function_body(C_FINAL, "momentum_compressor_compress_batch")
     assert 'env_flag_enabled("FALCOM_LEGACY_BREAKDOWN")' in body
     assert 'env_flag_enabled("FALCOM_BATCH_BREAKDOWN")' in body
-    assert "g_wall_timing_enabled = (legacy_breakdown_enabled || batch_breakdown_enabled) ? 1 : 0;" in body
+    assert "g_wall_timing_enabled = (legacy_breakdown_enabled || batch_breakdown_enabled)? 1: 0;" in body
     assert 'printf("[BREAKDOWN]' in body
     assert 'printf("[BATCH_BREAKDOWN]' in body
     legacy_index = body.index('env_flag_enabled("FALCOM_LEGACY_BREAKDOWN")')
     batch_index = body.index('env_flag_enabled("FALCOM_BATCH_BREAKDOWN")')
-    assert legacy_index != batch_index
+    assert legacy_index!= batch_index
 
 
 def test_batch_info_logging_is_log_level_gated() -> None:

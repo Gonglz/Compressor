@@ -64,7 +64,7 @@ class QSGDCompressor(BaseCompressor):
     """
     Quantized SGD compressor with Huffman coded magnitudes.
     Modified QSGD using L-infinity norm and Huffman encoding.
-    
+
     Required config keys:
       - lossless_compressor: zstd | gzip | zlib | blosc | lzma (for non-weight params)
       - param_cutoff: minimum tensor length for QSGD
@@ -178,13 +178,13 @@ class QSGDCompressor(BaseCompressor):
     def _compress(self, ori_data: np.ndarray) -> bytes:
         payload = self._qsgd_encode(ori_data)
         compressed = pickle.dumps(payload)
-        
+
         # Debug information
         original_bytes = ori_data.nbytes
         compressed_bytes = len(compressed)
         ratio = original_bytes / compressed_bytes if compressed_bytes > 0 else 0
         # print(f"[QSGD] Original: {original_bytes}B → Compressed: {compressed_bytes}B (ratio: {ratio:.2f}x)")
-        
+
         return compressed
 
     def _decompress_model(
@@ -238,7 +238,7 @@ class QSGDCompressor(BaseCompressor):
 
         max_abs = float(payload.get("max_abs", 0.0))
         huffman_code = payload.get("huffman_code", {})
-        
+
         # Decode levels with Huffman
         levels = np.asarray(
             self._huffman_decode(payload.get("levels", b""), numel, huffman_code),
@@ -301,7 +301,7 @@ class QSGDCompressor(BaseCompressor):
 
         # Use L-infinity norm (max absolute value)
         max_abs = np.max(np.abs(flat))
-        
+
         if not np.isfinite(max_abs):
             raise ValueError("Encountered non-finite max_abs during QSGD compression.")
 
@@ -311,7 +311,7 @@ class QSGDCompressor(BaseCompressor):
         else:
             # Quantization with max normalization: scaled = |v_i| / max_abs * s
             scaled = np.abs(flat) * (self.level / max_abs)
-            
+
             if self.stochastic:
                 base = np.floor(scaled).astype(np.int32)
                 prob = scaled - base
@@ -320,7 +320,7 @@ class QSGDCompressor(BaseCompressor):
                 levels = base + increments
             else:
                 levels = np.round(scaled).astype(np.int32)
-            
+
             levels = np.clip(levels, 0, self.level)
             signs_bool = (flat >= 0).astype(np.uint8)
 
@@ -329,19 +329,19 @@ class QSGDCompressor(BaseCompressor):
         level_dist = dict(zip(unique.tolist(), counts.tolist()))
         bins_0_1 = sum(counts[unique <= 1]) if len(counts[unique <= 1]) > 0 else 0
         bins_0_10 = sum(counts[unique <= 10]) if len(counts[unique <= 10]) > 0 else 0
-        
+
         # print(f"  Level stats: numel={numel}, max_abs={max_abs:.6f}")
         # print(f"  Distribution: 0-1={bins_0_1/numel*100:.1f}%, 0-10={bins_0_10/numel*100:.1f}%")
         # print(f"  Level range: [{np.min(levels)}, {np.max(levels)}]")
 
         # Encode signs as packed bits
         sign_bytes = np.packbits(signs_bool).tobytes()
-        
+
         # Encode levels with Huffman
         levels_list = levels.tolist()
         level_bytes, huffman_code = self._huffman_encode(levels_list)
-        
-        
+
+
         total_compressed = len(level_bytes) + len(sign_bytes)
 
         return {
@@ -361,7 +361,7 @@ class QSGDCompressor(BaseCompressor):
         """
         if not levels:
             return b"", {}
-        
+
         # Handle single unique value case
         freq = Counter(levels)
         if len(freq) == 1:
@@ -372,11 +372,11 @@ class QSGDCompressor(BaseCompressor):
             for _ in levels:
                 writer.write_bit(0)
             return writer.finish(), huffman_code
-        
+
         # Build Huffman tree using a min-heap
         heap = [[weight, [symbol, ""]] for symbol, weight in freq.items()]
         heapq.heapify(heap)
-        
+
         while len(heap) > 1:
             lo = heapq.heappop(heap)
             hi = heapq.heappop(heap)
@@ -386,18 +386,18 @@ class QSGDCompressor(BaseCompressor):
             for pair in hi[1:]:
                 pair[1] = '1' + pair[1]
             heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
-        
+
         # Extract Huffman codes
         huffman_code = {symbol: code for symbol, code in sorted(heapq.heappop(heap)[1:])}
-        
+
         # Encode the data
         writer = _BitWriter()
         for level in levels:
             for bit in huffman_code[level]:
                 writer.write_bit(int(bit))
-        
+
         return writer.finish(), huffman_code
-    
+
     @staticmethod
     def _huffman_decode(data: bytes, count: int, huffman_code: Dict[int, str]) -> List[int]:
         """
@@ -405,23 +405,23 @@ class QSGDCompressor(BaseCompressor):
         """
         if count == 0:
             return []
-        
+
         # Reverse the Huffman code table for decoding
         reverse_code = {code: symbol for symbol, code in huffman_code.items()}
-        
+
         # Handle single symbol case
         if len(huffman_code) == 1:
             symbol = list(huffman_code.keys())[0]
             return [symbol] * count
-        
+
         reader = _BitReader(data)
         decoded = []
         current_code = ""
-        
+
         while len(decoded) < count:
             current_code += str(reader.read_bit())
             if current_code in reverse_code:
                 decoded.append(reverse_code[current_code])
                 current_code = ""
-        
+
         return decoded

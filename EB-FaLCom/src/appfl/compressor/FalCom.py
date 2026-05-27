@@ -41,7 +41,7 @@ class FalCom(BaseCompressor):
             # Create output directory if it doesn't exist
             output_dir = "./output"
             os.makedirs(output_dir, exist_ok=True)
-            
+
             file_handler = logging.FileHandler(os.path.join(output_dir, "falcom.log"), mode="a")
             formatter = logging.Formatter('[%(asctime)s] %(name)s - %(levelname)s - %(message)s')
             file_handler.setFormatter(formatter)
@@ -55,8 +55,8 @@ class FalCom(BaseCompressor):
         # Momentum predictor params
         self.momentum_lr = compressor_config.get("momentum_lr", 0.07)
         self.consistency_threshold = compressor_config.get("consistency_threshold", 0.5)
-        
-        # 无损压缩器选择 (zstd, blosc, pickle)
+
+        # note (zstd, blosc, pickle)
         self.lossless_compressor = getattr(compressor_config, 'lossless_compressor', 'zstd')
 
         # self.logger.info(f"Initializing FalCom with momentum_lr={self.momentum_lr}, "
@@ -126,12 +126,12 @@ class FalCom(BaseCompressor):
             data_bytes = pickle.dumps(arr, protocol=pickle.HIGHEST_PROTOCOL)
             compressed = zstd.compress(data_bytes, 10)
             return compressed, 'zstd'
-        
+
         elif self.lossless_compressor == 'blosc':
             data_bytes = pickle.dumps(arr, protocol=pickle.HIGHEST_PROTOCOL)
             compressed = blosc.compress(data_bytes, typesize=4)
             return compressed, 'blosc'
-        
+
         else:  # pickle
             data_bytes = pickle.dumps(arr, protocol=pickle.HIGHEST_PROTOCOL)
             return data_bytes, 'pickle'
@@ -141,11 +141,11 @@ class FalCom(BaseCompressor):
         if codec == 'zstd':
             data_bytes = zstd.decompress(compressed_data)
             return pickle.loads(data_bytes)
-        
+
         elif codec == 'blosc':
             data_bytes = blosc.decompress(compressed_data)
             return pickle.loads(data_bytes)
-        
+
         else:  # pickle
             return pickle.loads(compressed_data)
 
@@ -185,7 +185,7 @@ class FalCom(BaseCompressor):
             lossless_data, codec = self._lossless_compress(data)
             return lossless_data, 1.0
 
-    def _decompress_with_sz3(self, compressed_data: bytes, original_shape: Tuple[int, ...], original_dtype) -> np.ndarray:
+    def _decompress_with_sz3(self, compressed_data: bytes, original_shape: Tuple[int,...], original_dtype) -> np.ndarray:
         if not os.path.exists(self.compressor_lib_path):
             raise RuntimeError("SZ3 library not found; cannot SZ3-decompress.")
         compressor = pysz.SZ(szpath=self.compressor_lib_path)
@@ -227,11 +227,11 @@ class FalCom(BaseCompressor):
             self.step_count[client_id] = {}
         if layer_name not in self.step_count[client_id]:
             self.step_count[client_id][layer_name] = 0
-            
+
         self.step_count[client_id][layer_name] += 1
         current_step = self.step_count[client_id][layer_name]
 
-        # Step 1: direct + codec 按 should_lossy
+        # Step 1: direct + codec note should_lossy
         if current_step == 1:
             self.gradient_history[client_id][layer_name].append(grad_np.copy())
             if self._should_lossy(layer_name, grad_np):
@@ -563,7 +563,7 @@ class FalCom(BaseCompressor):
                 compressed_layers[layer_name] = compressed_layer
 
             else:
-                # 非 tensor → lossless compress
+                # note tensor -> lossless compress
                 data_bytes, codec = self._lossless_compress(layer_params)
                 compressed_layers[layer_name] = {
                     "type": "direct",
@@ -599,7 +599,7 @@ class FalCom(BaseCompressor):
             compressed_data = self._lossless_decompress(compressed_model, 'zstd')
         except:
             try:
-                compressed_data = self._lossless_decompress(compressed_model, 'blosc') 
+                compressed_data = self._lossless_decompress(compressed_model, 'blosc')
             except:
                 compressed_data = pickle.loads(compressed_model)
         compressed_layers = compressed_data["compressed_layers"]
@@ -624,7 +624,7 @@ class FalCom(BaseCompressor):
                             arr = pickle.loads(compressed_layer["data"])
                         else:
                             arr = self._lossless_decompress(compressed_layer["data"], codec)
-                        
+
                         if shape is not None:
                             tensor = torch.as_tensor(arr)
                         else:
